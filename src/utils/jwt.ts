@@ -1,8 +1,9 @@
 import jwt from 'jsonwebtoken';
+import { JWTPayload } from '../schemas/auth.schema';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = process.env.JWT_SECRET! as string;
 
-export const signToken = (payload: { id: number; email: string; role: string }) => {
+export const signToken = (payload: JWTPayload) => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
 };
 

@@ -1,11 +1,6 @@
 import pool from '../config/database';
 
-export interface User {
-  usuario_id: number;
-  email: string;
-  password?: string;
-  rol_nombre: string;
-}
+import { User } from '../schemas/user.schema';
 
 export class UserModel {
   static async findByEmail(email: string): Promise<User | null> {
