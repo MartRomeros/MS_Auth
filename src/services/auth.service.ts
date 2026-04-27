@@ -23,7 +23,7 @@ export class AuthService {
       role: user.rol_nombre,
     });
 
-    return { token };
+    return { token: token, role: user.rol_nombre };
   }
 
   static async validateToken(userData: any) {
