@@ -60,4 +60,22 @@ router.post('/login', validate(loginSchema), AuthController.login);
  */
 router.get('/validate', authenticateToken, AuthController.validate);
 
+/**
+ * @openapi
+ * /api/auth/profile:
+ *   get:
+ *     summary: Get user profile
+ *     description: Retrieve the complete profile of the authenticated user based on their token
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile retrieved successfully
+ *       401:
+ *         description: Unauthorized, invalid or missing token
+ *       404:
+ *         description: User not found
+ */
+router.get('/profile', authenticateToken, AuthController.getProfile);
+
 export default router;
