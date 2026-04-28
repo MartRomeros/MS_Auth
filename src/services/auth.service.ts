@@ -1,5 +1,5 @@
 import { UserModel } from '../models/user.model';
-import { userSchema } from '../schemas/user.schema';
+import { tokenPayloadSchema } from '../schemas/auth.schema';
 import { comparePassword } from '../utils/bcrypt';
 import { signToken } from '../utils/jwt';
 
@@ -23,15 +23,23 @@ export class AuthService {
       role: user.rol_nombre,
     });
 
-    return { token };
+    return { token: token, role: user.rol_nombre };
   }
 
   static async validateToken(userData: any) {
-    const result = userSchema.safeParse(userData);
+    const result = tokenPayloadSchema.safeParse(userData);
 
     if (!result.success) {
       throw new Error('Invalid or expired token');
     }
     return { valid: true, user: result.data };
+  }
+
+  static async getProfile(userId: number) {
+    const profile = await UserModel.findProfileById(userId);
+    if (!profile) {
+      throw new Error('User not found');
+    }
+    return profile;
   }
 }
