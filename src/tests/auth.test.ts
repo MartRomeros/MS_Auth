@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import app from '../app';
 import { UserModel } from '../models/user.model';
+import { email } from 'zod';
 
 // Mock del UserModel para no usar la base de datos real
 vi.mock('../models/user.model', () => ({
@@ -11,7 +12,8 @@ vi.mock('../models/user.model', () => ({
 }));
 
 describe('Auth Controller - Login', () => {
-  it('should return 401 if user does not exist', async () => {
+
+  it('Debe retornar 401 si no existe', async () => {
     // Simulamos que el usuario no existe
     (UserModel.findByEmail as any).mockResolvedValue(null);
 
@@ -23,7 +25,7 @@ describe('Auth Controller - Login', () => {
     expect(res.body).toHaveProperty('message', 'Invalid credentials');
   });
 
-  it('should return 400 if validation fails', async () => {
+  it('Debe retornar 400 si el usuario no es valido', async () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({ email: 'invalid-email', password: '123' });
@@ -33,5 +35,6 @@ describe('Auth Controller - Login', () => {
     expect(res.body).toHaveProperty('errors');
   });
 
-  it('Debe devolver 200 si el usuario existe y la contraseña es correcta')
+
+
 });
