@@ -1,20 +1,20 @@
-import { UserModel } from '../models/user.model';
-import { tokenPayloadSchema } from '../schemas/auth.schema';
-import { comparePassword } from '../utils/bcrypt';
-import { signToken } from '../utils/jwt';
+import { UserModel } from "../models/user.model";
+import { tokenPayloadSchema } from "../schemas/auth.schema";
+import { comparePassword } from "../utils/bcrypt";
+import { signToken } from "../utils/jwt";
 
 export class AuthService {
   static async login(email: string, password: string) {
     const user = await UserModel.findByEmail(email);
 
     if (!user || !user.password) {
-      throw new Error('Invalid credentials');
+      throw new Error("Invalid credentials");
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
-      throw new Error('Invalid credentials');
+      throw new Error("Invalid credentials");
     }
 
     const token = signToken({
@@ -23,14 +23,16 @@ export class AuthService {
       role: user.rol_nombre,
     });
 
-    return { token: token, role: user.rol_nombre };
+    const profile = await UserModel.findProfileById(user.usuario_id);
+
+    return { token: token, profile: profile };
   }
 
   static async validateToken(userData: any) {
     const result = tokenPayloadSchema.safeParse(userData);
 
     if (!result.success) {
-      throw new Error('Invalid or expired token');
+      throw new Error("Invalid or expired token");
     }
     return { valid: true, user: result.data };
   }
@@ -38,7 +40,7 @@ export class AuthService {
   static async getProfile(userId: number) {
     const profile = await UserModel.findProfileById(userId);
     if (!profile) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
     return profile;
   }

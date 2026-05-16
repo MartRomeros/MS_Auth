@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import authRoutes from './routes/auth.routes';
+import teacherRoutes from './routes/teacher.routes';
 
 const app = express();
 
@@ -21,5 +22,6 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/teachers', teacherRoutes);
 
 export default app;
