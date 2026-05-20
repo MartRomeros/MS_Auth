@@ -96,3 +96,7 @@ Esta documentación detalla los endpoints de:
 2.  **Validación**: Todas las entradas son validadas estrictamente con Zod antes de llegar a la lógica de negocio.
 3.  **Encabezados**: Uso de Helmet para mitigar vulnerabilidades web comunes.
 4.  **Tokens**: Implementación de JWT con expiración para sesiones seguras.
+
+
+para levantar contenedor docker:
+`docker run -d --name ms_auth -p 3000:3000 --env-file .env --network devops_default  ms_auth `
