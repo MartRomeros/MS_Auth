@@ -6,6 +6,8 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import authRoutes from './routes/auth.routes';
 import teacherRoutes from './routes/teacher.routes';
+import studentRoutes from './routes/student.routes';
+import adminRoutes from './routes/admin.routes';
 
 const app = express();
 
@@ -23,5 +25,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/teachers', teacherRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/admin', adminRoutes);
 
 export default app;

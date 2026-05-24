@@ -98,5 +98,8 @@ Esta documentación detalla los endpoints de:
 4.  **Tokens**: Implementación de JWT con expiración para sesiones seguras.
 
 
+para construir imagen docker
+`docker build -t ms_auth .`
+
 para levantar contenedor docker:
 `docker run -d --name ms_auth -p 3000:3000 --env-file .env --network devops_default  ms_auth `
