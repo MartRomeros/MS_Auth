@@ -1,105 +1,256 @@
-# Microservicio de Autenticación (ms_authentication)
+# ms_authentication
 
-Este proyecto es un microservicio robusto encargado de la gestión de autenticación y perfiles de usuario. Está construido utilizando **Node.js** con **Express 5** y **TypeScript**, siguiendo una arquitectura de capas limpia y preparada para despliegues tanto en servidores tradicionales como en entornos Serverless (AWS Lambda).
+Microservicio de autenticacion y perfil de usuarios construido con `Node.js`, `Express 5` y `TypeScript`. El servicio expone login con JWT, validacion de token, consulta de perfil y dashboards protegidos por rol para administradores, docentes y estudiantes.
 
-## 🚀 Tecnologías y Dependencias
+Tambien esta preparado para dos formas de ejecucion:
 
-A continuación se detallan las dependencias principales del proyecto y su justificación técnica:
+- modo servidor tradicional con `app.listen(...)`
+- modo serverless mediante `serverless-http` para AWS Lambda
 
-### Dependencias de Producción
+## Stack actual
 
-| Dependencia | Propósito | Justificación Técnica |
-| :--- | :--- | :--- |
-| **express (v5.2.1)** | Framework Web | Versión más reciente que soporta de forma nativa la gestión de promesas en los controladores, eliminando la necesidad de bloques `try/catch` repetitivos o envoltorios para errores asíncronos. |
-| **typescript** | Tipado Estático | Garantiza la integridad del código, reduce errores en tiempo de ejecución y mejora la productividad mediante el autocompletado y la documentación en tiempo real. |
-| **pg (node-postgres)** | Cliente Base de Datos | Cliente oficial y eficiente para PostgreSQL. Permite la gestión de pools de conexión, fundamental para el rendimiento en microservicios. |
-| **zod** | Validación de Esquemas | Librería de declaración y validación de esquemas con inferencia de tipos de TypeScript de primera clase. Se utiliza para validar cuerpos de peticiones (Body), parámetros y entornos. |
-| **jsonwebtoken (JWT)** | Autenticación | Estándar de la industria para la creación de tokens de acceso seguros y sin estado (stateless), permitiendo la escalabilidad horizontal. |
-| **bcrypt** | Seguridad de Contraseñas | Implementa hashing de contraseñas con sal (salt), protegiendo las credenciales de los usuarios contra ataques de fuerza bruta y tablas de arcoíris. |
-| **helmet** | Seguridad HTTP | Middleware que ayuda a proteger la aplicación configurando varios encabezados HTTP de seguridad (XSS protection, Content Security Policy, etc.). |
-| **cors** | Gestión de Recursos | Habilita el Intercambio de Recursos de Origen Cruzado (CORS), necesario para permitir que clientes (Frontend) desde otros dominios consuman la API. |
-| **serverless-http** | Adaptador Serverless | Permite envolver la aplicación Express para que pueda ejecutarse en AWS Lambda sin modificar la lógica central del microservicio. |
-| **swagger-jsdoc / ui** | Documentación API | Genera documentación interactiva basada en el estándar OpenAPI (Swagger), facilitando la integración con otros equipos y el testing manual. |
-| **morgan** | Logging | Logger de peticiones HTTP para el desarrollo y monitoreo de las interacciones con la API. |
-| **dotenv** | Configuración | Carga variables de entorno desde un archivo `.env` para separar la configuración del código fuente (siguiendo los principios de *The Twelve-Factor App*). |
+### Runtime y framework
 
-### Dependencias de Desarrollo
+- `node`
+- `express@5`
+- `typescript`
 
-*   **vitest**: Framework de testing moderno y extremadamente rápido, compatible con el ecosistema de TypeScript.
-*   **supertest**: Utilizado para realizar tests de integración de los endpoints HTTP.
-*   **ts-node-dev**: Herramienta de desarrollo que reinicia el servidor automáticamente tras cambios en el código TypeScript.
-*   **rimraf**: Utilidad para limpiar el directorio de compilación (`dist`) de forma multiplataforma.
+### Seguridad y API
 
----
+- `jsonwebtoken` para emision y verificacion de JWT
+- `bcrypt` para validacion segura de contrasenas
+- `helmet` para headers de seguridad
+- `cors` para acceso cross-origin
+- `morgan` para logging HTTP
+- `zod` para validacion de payloads
 
-## 🏗️ Arquitectura del Proyecto
+### Datos e integracion
 
-El proyecto sigue una estructura de capas para asegurar la separación de responsabilidades y facilitar el mantenimiento:
+- `pg` para acceso directo a PostgreSQL
+- `dotenv` para configuracion por variables de entorno
+- `swagger-jsdoc` + `swagger-ui-express` para documentacion OpenAPI
+- `serverless-http` para empaquetar la app como handler Lambda
+
+### Testing y desarrollo
+
+- `vitest`
+- `supertest`
+- `ts-node-dev`
+- `rimraf`
+
+## Arquitectura y patrones
+
+El proyecto sigue una arquitectura en capas, con separacion clara entre transporte HTTP, logica de negocio y acceso a datos:
+
+```text
+Request
+  -> Route
+  -> Middleware
+  -> Controller
+  -> Service
+  -> Model
+  -> PostgreSQL
+```
+
+### Patrones presentes en el codigo
+
+- `Layered Architecture`: rutas, controladores, servicios y modelos separados por responsabilidad.
+- `Middleware Pipeline`: autenticacion JWT, validacion y middlewares globales de seguridad.
+- `Schema Validation`: los payloads se validan con Zod antes de llegar a la logica de negocio.
+- `Stateless Authentication`: el estado de autenticacion viaja en JWT.
+- `Role-based Access`: endpoints protegidos que autorizan por rol extraido desde el token.
+- `Serverless Adapter`: la misma app Express puede correr localmente o como Lambda handler.
+
+### Estructura del proyecto
 
 ```text
 src/
-├── app.ts              # Configuración central de Express y Middlewares
-├── index.ts            # Punto de entrada (Servidor local y Handler Lambda)
-├── config/             # Configuraciones de DB, Swagger y entorno
-├── controllers/        # Controladores de tráfico (Orquestan Req/Res)
-├── services/           # Lógica de negocio (Capa pura de procesos)
-├── models/             # Interacción con la base de datos (Data Access)
-├── middlewares/        # Filtros de seguridad, validación y autenticación
-├── schemas/            # Definiciones de esquemas Zod (Validación de datos)
-├── routes/             # Definición de rutas y documentación OpenAPI
-├── utils/              # Funciones de ayuda (JWT, Bcrypt, Helpers)
-└── tests/              # Tests unitarios y de integración
+  app.ts                  # configuracion de Express y middlewares globales
+  index.ts                # entrypoint local y export del handler serverless
+  config/                 # PostgreSQL y Swagger
+  controllers/            # adaptadores HTTP
+  middlewares/            # auth JWT y validacion
+  models/                 # consultas SQL con pg
+  routes/                 # definicion de endpoints y anotaciones OpenAPI
+  schemas/                # contratos Zod y tipos
+  services/               # logica de negocio
+  tests/                  # pruebas con Vitest y Supertest
+  utils/                  # JWT y bcrypt
 ```
 
----
+## Dependencias externas necesarias
 
-## 🛠️ Instalación y Uso
+Para ejecutar el servicio correctamente necesitas:
 
-### Requisitos Previos
-*   Node.js (v18+)
-*   PostgreSQL
+- `Node.js 22` recomendado para alinear el entorno local con la imagen Docker actual (`node:22-alpine`)
+- `npm`
+- una instancia de `PostgreSQL`
 
-### Configuración del Entorno
-Crea un archivo `.env` en la raíz del proyecto basado en las variables requeridas en `src/config/database.ts`:
+Importante: este repositorio no incluye migraciones ni seeders. La base de datos debe existir previamente y contener, al menos, las tablas que el servicio consulta hoy, como:
+
+- `usuarios`
+- `roles`
+- `estudiantes`
+- `docentes`
+- `apoderados`
+- tablas utilizadas por los dashboards de administrador, docente y estudiante
+
+## Variables de entorno
+
+Crea un archivo `.env` en la raiz del proyecto:
+
 ```env
 PORT=3000
-DB_USER=tu_usuario
+DB_USER=postgres
 DB_HOST=localhost
 DB_DATABASE=ms_auth
-DB_PASSWORD=tu_password
+DB_PASSWORD=postgres
 DB_PORT=5432
-JWT_SECRET=una_clave_secreta_muy_larga
+DB_SSL=false
+JWT_SECRET=una_clave_larga_y_segura
 ```
 
-### Comandos Disponibles
-*   `npm install`: Instala las dependencias.
-*   `npm run dev`: Inicia el servidor de desarrollo con recarga en caliente.
-*   `npm run build`: Compila el proyecto a JavaScript puro en la carpeta `dist`.
-*   `npm start`: Ejecuta la versión compilada del proyecto.
-*   `npm test`: Ejecuta la suite de pruebas con Vitest.
+### Notas
 
----
+- `DB_SSL=true` habilita conexion SSL con `rejectUnauthorized: false`.
+- `JWT_SECRET` es obligatorio; sin esta variable no se podran firmar ni validar tokens.
+- `PORT` debe existir para ejecucion local, ya que `src/index.ts` usa `process.env.PORT`.
 
-## 📑 Documentación de la API
-Una vez que el servidor esté en ejecución, puedes acceder a la documentación interactiva en:
-`http://localhost:3000/api-docs`
+## Instalacion local
 
-Esta documentación detalla los endpoints de:
-*   **POST /api/auth/login**: Autenticación de usuarios.
-*   **GET /api/auth/validate**: Validación de tokens JWT.
-*   **GET /api/auth/profile**: Obtención del perfil completo del usuario autenticado.
+```bash
+npm install
+```
 
----
+## Scripts disponibles
 
-## 🔒 Seguridad Implementada
-1.  **Hasing**: Las contraseñas nunca se almacenan en texto plano (Bcrypt).
-2.  **Validación**: Todas las entradas son validadas estrictamente con Zod antes de llegar a la lógica de negocio.
-3.  **Encabezados**: Uso de Helmet para mitigar vulnerabilidades web comunes.
-4.  **Tokens**: Implementación de JWT con expiración para sesiones seguras.
+```bash
+npm run dev
+npm run build
+npm start
+npm test
+```
 
+### Que hace cada script
 
-para construir imagen docker
-`docker build -t ms_auth .`
+- `npm run dev`: levanta el servicio con recarga en caliente desde `src/index.ts`.
+- `npm run build`: compila TypeScript a `dist/`.
+- `npm start`: ejecuta la version compilada.
+- `npm test`: corre las pruebas con Vitest.
 
-para levantar contenedor docker:
-`docker run -d --name ms_auth -p 3000:3000 --env-file .env --network devops_default  ms_auth `
+## Ejecucion local
+
+1. Asegura que PostgreSQL este disponible y que las credenciales del `.env` sean correctas.
+2. Instala dependencias con `npm install`.
+3. Levanta el servicio:
+
+```bash
+npm run dev
+```
+
+El servicio quedara disponible, por defecto, en:
+
+- `http://localhost:3000/health`
+- `http://localhost:3000/api-docs`
+
+## Endpoints principales
+
+### Autenticacion
+
+- `POST /api/auth/login`
+- `GET /api/auth/validate`
+- `GET /api/auth/profile`
+
+### Dashboards protegidos por rol
+
+- `GET /api/admin/me/dashboard`
+- `GET /api/teachers/me/dashboard`
+- `GET /api/students/me/dashboard`
+
+Los endpoints protegidos esperan header:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Ejecutar con Docker
+
+El proyecto incluye un `Dockerfile` multi-stage:
+
+- etapa `builder`: instala dependencias y compila TypeScript
+- etapa final: copia `dist/` e instala solo dependencias de produccion
+
+### 1. Construir la imagen
+
+```bash
+docker build -t ms_authentication .
+```
+
+### 2. Ejecutar el contenedor
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env ms_authentication
+```
+
+### Consideraciones importantes para Docker
+
+El contenedor necesita conectarse a PostgreSQL. El valor de `DB_HOST` cambia segun donde viva tu base de datos:
+
+- si PostgreSQL corre en tu maquina host con Docker Desktop: usa `DB_HOST=host.docker.internal`
+- si PostgreSQL corre en otro contenedor: usa el nombre del servicio o contenedor y conecta ambos a la misma red Docker
+- si PostgreSQL corre en un servidor externo: usa el hostname real y configura `DB_SSL` segun corresponda
+
+### Ejemplo: contenedor app conectado a una red existente
+
+```bash
+docker network create dev-network
+docker run --rm --name ms_auth -p 3000:3000 --env-file .env --network dev-network ms_authentication
+```
+
+Si tu base de datos ya esta en esa misma red, define `DB_HOST` con el nombre del contenedor o servicio PostgreSQL.
+
+### Ejemplo de `.env` para Docker Desktop en Windows/macOS
+
+```env
+PORT=3000
+DB_USER=postgres
+DB_HOST=host.docker.internal
+DB_DATABASE=ms_auth
+DB_PASSWORD=postgres
+DB_PORT=5432
+DB_SSL=false
+JWT_SECRET=una_clave_larga_y_segura
+```
+
+## Documentacion OpenAPI
+
+Swagger se genera a partir de anotaciones en `src/routes/*.ts`. Una vez levantado el servicio, la UI queda disponible en:
+
+```text
+http://localhost:3000/api-docs
+```
+
+## Calidad y seguridad
+
+El servicio ya incorpora varias decisiones de base:
+
+- validacion de entrada con Zod
+- autenticacion basada en JWT
+- proteccion de headers con Helmet
+- logging de requests con Morgan
+- separacion entre capa HTTP, logica y acceso a datos
+
+## Testing actual
+
+Las pruebas incluidas validan al menos:
+
+- endpoint de health check
+- disponibilidad de Swagger
+- casos base del login y validacion de entrada
+
+## Consideraciones de evolucion
+
+Al revisar el estado actual del proyecto, hay dos puntos relevantes para cualquier despliegue:
+
+- el servicio depende de una estructura de base de datos existente y no trae migraciones
+- no hay `docker-compose.yml`, por lo que la orquestacion con PostgreSQL debe resolverse externamente o agregarse despues
