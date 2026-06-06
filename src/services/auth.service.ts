@@ -21,11 +21,9 @@ export class AuthService {
       id: user.usuario_id,
       email: user.email,
       role: user.rol_nombre,
-    });
+    });    
 
-    const profile = await UserModel.findProfileById(user.usuario_id);
-
-    return { token: token, profile: profile };
+    return { token: token };
   }
 
   static async validateToken(userData: any) {
