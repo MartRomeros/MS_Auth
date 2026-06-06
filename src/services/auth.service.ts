@@ -21,9 +21,11 @@ export class AuthService {
       id: user.usuario_id,
       email: user.email,
       role: user.rol_nombre,
-    });    
+    });
 
-    return { token: token };
+    const profile = await UserModel.findProfileById(user.usuario_id);
+
+    return { token: token, profile: profile };
   }
 
   static async validateToken(userData: any) {
