@@ -19,7 +19,7 @@ export interface TeacherAssignment {
   subjectId: number;
   subjectName: string;
   subjectCode: string | null;
-  roomIds: number[];
+  sala: { id: number; nombre: string } | null;
 }
 
 export interface TeacherCourseStats {
@@ -67,7 +67,7 @@ export class TeacherService {
       subjectId: Number(row.subject_id),
       subjectName: row.subject_name,
       subjectCode: row.subject_code,
-      roomIds: Array.isArray(row.room_ids) ? row.room_ids.map(Number) : [],
+      sala: row.sala_id != null ? { id: Number(row.sala_id), nombre: row.sala_nombre! } : null,
     };
   }
 

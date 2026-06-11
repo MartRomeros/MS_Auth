@@ -14,7 +14,8 @@ export interface TeacherAssignmentRow {
     subject_id: number;
     subject_name: string;
     subject_code: string | null;
-    room_ids: number[];
+    sala_id: number | null;
+    sala_nombre: string | null;
 }
 
 export interface TeacherCourseStatsRow {
@@ -76,27 +77,13 @@ export class TeacherModel {
         asig.asignatura_id AS subject_id,
         asig.nombre AS subject_name,
         asig.siglas AS subject_code,
-        COALESCE(
-          ARRAY_REMOVE(ARRAY_AGG(DISTINCT sea.sala_id), NULL),
-          ARRAY[]::integer[]
-        ) AS room_ids
+        s.sala_id,
+        s.nombre AS sala_nombre
       FROM curso_asignatura_docente cad
       JOIN cursos c ON c.curso_id = cad.curso_id
       JOIN asignaturas asig ON asig.asignatura_id = cad.asignatura_id
-      LEFT JOIN evaluaciones ev ON ev.cad_id = cad.id
-      LEFT JOIN asistencia a ON a.cad_id = cad.id
-      LEFT JOIN sala_evaluacione_asistencia sea
-        ON sea.evaluacion_id = ev.evaluacion_id
-        OR sea.asistencia_id = a.asistencia_id
+      LEFT JOIN salas s ON s.sala_id = cad.sala_id
       WHERE cad.docente_id = $1
-      GROUP BY
-        cad.id,
-        c.curso_id,
-        c.nivel,
-        c.letra,
-        asig.asignatura_id,
-        asig.nombre,
-        asig.siglas
       ORDER BY course_name, subject_name
     `;
 
