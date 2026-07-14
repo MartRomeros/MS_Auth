@@ -5,7 +5,7 @@ import { authenticateToken } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { loginSchema } from '../schemas/auth.schema';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * @openapi

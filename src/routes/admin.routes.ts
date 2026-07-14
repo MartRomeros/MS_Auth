@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller';
 import { authenticateToken } from '../middlewares/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * @openapi

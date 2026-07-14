@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -9,7 +9,7 @@ import teacherRoutes from './routes/teacher.routes';
 import studentRoutes from './routes/student.routes';
 import adminRoutes from './routes/admin.routes';
 
-const app = express();
+const app: Express = express();
 
 app.use(helmet());
 app.use(cors());

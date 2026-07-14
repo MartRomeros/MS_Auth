@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { TeacherController } from '../controllers/teacher.controller';
 import { authenticateToken } from '../middlewares/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * @openapi
