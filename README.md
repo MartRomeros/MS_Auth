@@ -2,16 +2,13 @@
 
 Microservicio de autenticacion y perfil de usuarios construido con `Node.js`, `Express 5` y `TypeScript`. El servicio expone login con JWT, validacion de token, consulta de perfil y dashboards protegidos por rol para administradores, docentes y estudiantes.
 
-Tambien esta preparado para dos formas de ejecucion:
-
-- modo servidor tradicional con `app.listen(...)`
-- modo serverless mediante `serverless-http` para AWS Lambda
+El servicio corre como contenedor Docker y en produccion vive como **task de Amazon ECS con launch type Fargate** (sin servidores propios que administrar).
 
 ## Stack actual
 
 ### Runtime y framework
 
-- `node`
+- `node` 22
 - `express@5`
 - `typescript`
 
@@ -29,7 +26,6 @@ Tambien esta preparado para dos formas de ejecucion:
 - `pg` para acceso directo a PostgreSQL
 - `dotenv` para configuracion por variables de entorno
 - `swagger-jsdoc` + `swagger-ui-express` para documentacion OpenAPI
-- `serverless-http` para empaquetar la app como handler Lambda
 
 ### Testing y desarrollo
 
@@ -37,6 +33,10 @@ Tambien esta preparado para dos formas de ejecucion:
 - `supertest`
 - `ts-node-dev`
 - `rimraf`
+
+### Gestor de paquetes
+
+- `pnpm` (fijado en `package.json` via el campo `packageManager`, activado con Corepack)
 
 ## Arquitectura y patrones
 
@@ -57,16 +57,15 @@ Request
 - `Layered Architecture`: rutas, controladores, servicios y modelos separados por responsabilidad.
 - `Middleware Pipeline`: autenticacion JWT, validacion y middlewares globales de seguridad.
 - `Schema Validation`: los payloads se validan con Zod antes de llegar a la logica de negocio.
-- `Stateless Authentication`: el estado de autenticacion viaja en JWT.
+- `Stateless Authentication`: el estado de autenticacion viaja en JWT, lo que hace al servicio apto para correr como multiples tasks de ECS detras de un load balancer sin estado compartido.
 - `Role-based Access`: endpoints protegidos que autorizan por rol extraido desde el token.
-- `Serverless Adapter`: la misma app Express puede correr localmente o como Lambda handler.
 
 ### Estructura del proyecto
 
 ```text
 src/
   app.ts                  # configuracion de Express y middlewares globales
-  index.ts                # entrypoint local y export del handler serverless
+  index.ts                # entrypoint, levanta el servidor con app.listen
   config/                 # PostgreSQL y Swagger
   controllers/            # adaptadores HTTP
   middlewares/            # auth JWT y validacion
@@ -74,16 +73,16 @@ src/
   routes/                 # definicion de endpoints y anotaciones OpenAPI
   schemas/                # contratos Zod y tipos
   services/               # logica de negocio
-  tests/                  # pruebas con Vitest y Supertest
   utils/                  # JWT y bcrypt
+test/                     # pruebas con Vitest y Supertest
 ```
 
 ## Dependencias externas necesarias
 
 Para ejecutar el servicio correctamente necesitas:
 
-- `Node.js 22` recomendado para alinear el entorno local con la imagen Docker actual (`node:22-alpine`)
-- `npm`
+- `Node.js 22` (mismo mayor que la imagen Docker, `node:22-alpine3.20`)
+- `pnpm` (via `corepack enable`, que respeta la version fijada en `packageManager` de `package.json`)
 - una instancia de `PostgreSQL`
 
 Importante: este repositorio no incluye migraciones ni seeders. La base de datos debe existir previamente y contener, al menos, las tablas que el servicio consulta hoy, como:
@@ -97,55 +96,58 @@ Importante: este repositorio no incluye migraciones ni seeders. La base de datos
 
 ## Variables de entorno
 
-Crea un archivo `.env` en la raiz del proyecto:
+Crea un archivo `.env` en la raiz del proyecto (ver `.env.example`):
 
 ```env
 PORT=3000
-DB_USER=postgres
-DB_HOST=localhost
-DB_DATABASE=ms_auth
-DB_PASSWORD=postgres
-DB_PORT=5432
-DB_SSL=false
 JWT_SECRET=una_clave_larga_y_segura
+SALT_ROUNDS=10
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_HOST=localhost
+DB_PORT=5432
+DB_DATABASE=ms_auth
+DB_SSL=false
 ```
 
 ### Notas
 
 - `DB_SSL=true` habilita conexion SSL con `rejectUnauthorized: false`.
 - `JWT_SECRET` es obligatorio; sin esta variable no se podran firmar ni validar tokens.
-- `PORT` debe existir para ejecucion local, ya que `src/index.ts` usa `process.env.PORT`.
+- `PORT` debe existir para ejecucion local y en el contenedor, ya que `src/index.ts` usa `process.env.PORT`.
+- En ECS estas variables se inyectan desde la Task Definition (idealmente `JWT_SECRET` y `DB_PASSWORD` como secrets de AWS Secrets Manager / SSM Parameter Store, no como variables planas).
 
 ## Instalacion local
 
 ```bash
-npm install
+corepack enable
+pnpm install
 ```
 
 ## Scripts disponibles
 
 ```bash
-npm run dev
-npm run build
-npm start
-npm test
+pnpm run dev
+pnpm run build
+pnpm start
+pnpm test
 ```
 
 ### Que hace cada script
 
-- `npm run dev`: levanta el servicio con recarga en caliente desde `src/index.ts`.
-- `npm run build`: compila TypeScript a `dist/`.
-- `npm start`: ejecuta la version compilada.
-- `npm test`: corre las pruebas con Vitest.
+- `pnpm run dev`: levanta el servicio con recarga en caliente desde `src/index.ts`.
+- `pnpm run build`: compila TypeScript a `dist/`.
+- `pnpm start`: ejecuta la version compilada.
+- `pnpm test`: corre las pruebas con Vitest.
 
 ## Ejecucion local
 
 1. Asegura que PostgreSQL este disponible y que las credenciales del `.env` sean correctas.
-2. Instala dependencias con `npm install`.
+2. Instala dependencias con `pnpm install`.
 3. Levanta el servicio:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 El servicio quedara disponible, por defecto, en:
@@ -175,10 +177,10 @@ Authorization: Bearer <token>
 
 ## Ejecutar con Docker
 
-El proyecto incluye un `Dockerfile` multi-stage:
+El proyecto incluye un `Dockerfile` multi-stage que usa `pnpm` (via Corepack) en ambas etapas:
 
-- etapa `builder`: instala dependencias y compila TypeScript
-- etapa final: copia `dist/` e instala solo dependencias de produccion
+- etapa `builder`: habilita Corepack, instala dependencias (incluye `pnpm-workspace.yaml`, necesario porque ahi vive `allowBuilds` que autoriza el build script nativo de `bcrypt`) y compila TypeScript
+- etapa final: copia `dist/` e instala solo dependencias de produccion con `pnpm install --prod --frozen-lockfile`
 
 ### 1. Construir la imagen
 
@@ -198,7 +200,7 @@ El contenedor necesita conectarse a PostgreSQL. El valor de `DB_HOST` cambia seg
 
 - si PostgreSQL corre en tu maquina host con Docker Desktop: usa `DB_HOST=host.docker.internal`
 - si PostgreSQL corre en otro contenedor: usa el nombre del servicio o contenedor y conecta ambos a la misma red Docker
-- si PostgreSQL corre en un servidor externo: usa el hostname real y configura `DB_SSL` segun corresponda
+- si PostgreSQL corre en un servidor externo (por ejemplo RDS): usa el hostname real y configura `DB_SSL` segun corresponda
 
 ### Ejemplo: contenedor app conectado a una red existente
 
@@ -221,6 +223,27 @@ DB_PORT=5432
 DB_SSL=false
 JWT_SECRET=una_clave_larga_y_segura
 ```
+
+## CI/CD
+
+El workflow de GitHub Actions (`.github/workflows/deploy.yaml`) corre en cada push a `master`:
+
+1. **`test`**: instala dependencias con `pnpm` (Node 22, cache de pnpm) y corre `vitest run --coverage`, subiendo el reporte como artifact.
+2. **`build_and_push`** (depende de `test`): construye la imagen con Docker Buildx usando el `Dockerfile` del repo y la publica en Docker Hub con dos tags: `latest` y el `sha` del commit.
+
+El pipeline no despliega directamente a ECS; el push de una imagen nueva a Docker Hub es el punto donde arranca el despliegue hacia la task de Fargate (manual o mediante un mecanismo externo, segun como este configurado el servicio de ECS).
+
+## Despliegue en AWS ECS (Fargate)
+
+En produccion el contenedor no corre en una EC2 propia: se ejecuta como **task de ECS con launch type Fargate**, usando la imagen publicada en Docker Hub por el CI/CD.
+
+Puntos a tener en cuenta para la Task Definition / Service de ECS:
+
+- **Puerto del contenedor**: debe coincidir con la variable `PORT` inyectada (por defecto `3000`), ya que `src/index.ts` levanta el servidor en `process.env.PORT`.
+- **Healthcheck**: usar `GET /health` (responde `{ "status": "UP" }`) como health check del target group / load balancer.
+- **Variables de entorno**: se definen en la Task Definition. `JWT_SECRET` y `DB_PASSWORD` deberian entrar como *secrets* (Secrets Manager o SSM Parameter Store) en vez de variables en texto plano.
+- **Acceso a PostgreSQL**: la task de Fargate necesita conectividad de red (Security Groups / VPC) hacia la instancia de PostgreSQL (por ejemplo RDS); ajustar `DB_HOST`, `DB_PORT` y `DB_SSL` segun ese destino.
+- **Imagen**: la Task Definition debe apuntar al repositorio `IMAGE_NAME` publicado por el workflow (tag `latest` o el `sha` especifico que se quiera fijar).
 
 ## Documentacion OpenAPI
 
@@ -250,7 +273,8 @@ Las pruebas incluidas validan al menos:
 
 ## Consideraciones de evolucion
 
-Al revisar el estado actual del proyecto, hay dos puntos relevantes para cualquier despliegue:
+Al revisar el estado actual del proyecto, hay puntos relevantes para cualquier despliegue:
 
 - el servicio depende de una estructura de base de datos existente y no trae migraciones
 - no hay `docker-compose.yml`, por lo que la orquestacion con PostgreSQL debe resolverse externamente o agregarse despues
+- no hay Task Definition ni infraestructura de ECS versionada en este repositorio; el despliegue a Fargate se gestiona fuera del codigo (consola AWS, IaC en otro repo, etc.)
